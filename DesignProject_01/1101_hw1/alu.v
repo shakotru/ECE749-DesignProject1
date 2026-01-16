@@ -44,11 +44,18 @@ always@(*) begin
     case (i_inst)
         3'b100: begin
 		o_data_r = i_data_a ~^ i_data_b;        // Bitwise XNOR
-		o_overflow_r = 0;	 			//overflow not possible
+		o_overflow_r = 0;	 		//overflow not possible
+		o_valid_r = 1;
+	end
+	3'b101: begin
+		o_data_r = !i_data_a[11] ? i_data_a[11]:0;   //ReLU checks sign bit (0=positive)
+		o_overflow_r = 0;			//overflow not possible	
+		o_valid_r = 1;
 	end
         default: begin
-		o_data_r = 0;
+		o_data_r = 0;  //no data
 		o_valid_r = 0; //operand will be invalid if != any of the above cases
+		o_overflow_w = 0; //no overflow if no operation conducted
 	end
     endcase
 end
