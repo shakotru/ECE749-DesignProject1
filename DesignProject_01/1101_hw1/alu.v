@@ -42,23 +42,14 @@ always@(*) begin
     //o_valid_w = ;
 
     case (i_inst)
-        //3'b000: result = a + b;                     // ADD
-        //3'b001: result = a - b;                     // SUBS
-        //3'b010: result = a & b;                     // AND
-        //3'b011: result = a | b;                     // OR
         3'b100: begin
 		o_data_r = i_data_a ~^ i_data_b;        // Bitwise XNOR
-		o_overflow_r = 0; 			//overflow not possible
+		o_overflow_r = 0;	 			//overflow not possible
 	end
-
-        //3'b101: result = a << b[$clog2(WIDTH)-1:0]; // SLL
-        //3'b110: result = a >> b[$clog2(WIDTH)-1:0]; // SRL
-        //3'b111: result = ($signed(a) < $signed(b)) ? 1 : 0; // SRA
         default: begin
 		o_data_r = 0;
 		o_valid_r = 0; //operand will be invalid if != any of the above cases
 	end
-
     endcase
 end
 
