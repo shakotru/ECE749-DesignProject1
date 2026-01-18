@@ -43,7 +43,7 @@ always@(*) begin
 
 		3'b001: begin  //SUBTRACT
 				o_data_w = $signed(i_data_a) - $signed(i_data_b);
-				o_overflow_w = ((i_data_a[11] ^ i_data_b[11]) & (i_data_b[11] ^ o_data_w[11]));
+				o_overflow_w = ((i_data_a[11] ^ i_data_b[11]) && ((i_data_b[11] && o_data_w[11])) | (~i_data_b[11] && ~o_data_w[11]));
 			end
 		3'b100: begin  //bitwise XNOR
 				o_data_w = i_data_a ~^ i_data_b;
