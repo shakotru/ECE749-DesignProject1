@@ -13,13 +13,11 @@ module alu (
 // ---------------------------------------------------------------------------
 // Wires and Registers
 // ---------------------------------------------------------------------------
-reg  [11:0] o_data_w, o_data_r;
+reg  signed[11:0] o_data_w, o_data_r;
 reg         o_valid_w, o_valid_r;
 reg         o_overflow_w, o_overflow_r;
+reg [11:0] i_data_a_reg, i_data_b_reg;
 // ---- Add your own wires and registers here if needed ---- //
-
-
-
 
 // ---------------------------------------------------------------------------
 // Continuous Assignment
@@ -27,37 +25,35 @@ reg         o_overflow_w, o_overflow_r;
 assign o_valid = o_valid_r;
 assign o_data = o_data_r;
 assign o_overflow = o_overflow_r;
+
 // ---- Add your own wire data assignments here if needed ---- //
-
-
-
 
 // ---------------------------------------------------------------------------
 // Combinational Blocks
 // ---------------------------------------------------------------------------
 // ---- Write your conbinational block design here ---- //
 always@(*) begin
-    //o_data_w = ;
-    //o_overflow_w = ;
-    //o_valid_w = ;
+    o_valid_w = ~o_overflow_w;
+	
+	case (i_inst)
+		3'b000: begin   //ADD
+				o_data_w = $signed(i_data_a )+ $signed(i_data_b);
+				o_overflow_w = (~o_data_w[11] & i_data_a[11] & i_data_b[11]) | (o_data_w[11] & (~i_data_a[11]) & (~i_data_b[11]));
+			end
 
-    case (i_inst)
-        3'b100: begin
-		o_data_r = i_data_a ~^ i_data_b;        // Bitwise XNOR
-		o_overflow_r = 0;	 		//overflow not possible
-		o_valid_r = 1;
-	end
-	3'b101: begin
-		o_data_r = !i_data_a[11] ? i_data_a[11]:0;   //ReLU checks sign bit (0=positive)
-		o_overflow_r = 0;			//overflow not possible	
-		o_valid_r = 1;
-	end
-        default: begin
-		o_data_r = 0;  //no data
-		o_valid_r = 0; //operand will be invalid if != any of the above cases
-		o_overflow_w = 0; //no overflow if no operation conducted
-	end
-    endcase
+		3'b001: begin  //SUBTRACT
+				o_data_w = $signed(i_data_a) - $signed(i_data_b);
+				o_overflow_w = ((i_data_a[11] ^ i_data_b[11]) & (i_data_b[11] ^ o_data_w[11]));
+			end
+		3'b100: begin  //bitwise XNOR
+				o_data_w = i_data_a ~^ i_data_b;
+				o_overflow_w = 0;  //no overflow possible
+		end
+		3'b101: begin //ReLU (checking the sign bit)
+				o_data_w = i_data_a[11] ? 12'b0 : i_data_a[11:0];
+				o_overflow_w=0; //no overflow possible
+		end	
+	endcase
 end
 
 
@@ -72,10 +68,15 @@ always@(posedge i_clk or negedge i_rst_n) begin
         o_data_r <= 0;
         o_overflow_r <= 0;
         o_valid_r <= 0;
-    end else begin
+    end else if (i_valid) begin
         o_data_r <= o_data_w;
         o_overflow_r <= o_overflow_w;
         o_valid_r <= o_valid_w;
+    end else begin
+        o_data_r <= 0;
+	o_overflow_r <= 0;
+	o_valid_r <= 0;
+
     end
 end
 
