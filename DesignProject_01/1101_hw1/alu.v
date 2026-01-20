@@ -13,12 +13,15 @@ module alu (
 // ---------------------------------------------------------------------------
 // Wires and Registers
 // ---------------------------------------------------------------------------
-reg  signed[11:0] o_data_w, o_data_r;
+reg  signed[11:0] o_data_w, o_data_r, long_res;
 reg         o_valid_w, o_valid_r;
 reg         o_overflow_w, o_overflow_r;
 // ---- Add your own wires and registers here if needed ---- //
 reg [11:0] a_abs, b_abs;
 reg [12:0] long_sum;
+reg signed[23:0] long_product;
+reg signed [31:0] long_prod_rounded, long_prod_scaled, res;
+
 
 // ---------------------------------------------------------------------------
 // Continuous Assignment
@@ -48,11 +51,22 @@ always@(*) begin
 		end
 		
 		3'b010: begin //MULTIPLY
+			long_product = $signed(i_data_a) * $signed(i_data_b);
+			long_prod_rounded = $signed(long_product) + ($signed(32'd1) <<< 4);//Rounding to the nearest fixed point value
+			long_prod_scaled = $signed(long_prod_rounded) >>> 5; //Discarding the extra fractional bits
+			o_data_w = long_prod_scaled[11:0];
+			o_overflow_w = long_prod_scaled[31:12] != ({20{long_prod_scaled[11]}}); 
+			//Check if the the bits above the 12 bits value are sign extensions bits, if not overflow occured 
 		
 		end		
 		
 		3'b011: begin //MAC
-
+			long_product = $signed(i_data_a) * $signed(i_data_b);
+			long_prod_rounded = $signed(long_product) + ($signed(32'd1) <<< 4);
+			long_prod_scaled = $signed(long_prod_rounded) >>> 5;
+			o_data_w = long_prod_scaled[11:0];
+			o_overflow_w = long_prod_scaled[31:12] != ({20{long_prod_scaled[11]}}); 
+			long_sum = $signed(o_data_r) + $signed(o_data_w);
 		end	
 		
 		3'b100: begin  //bitwise XNOR
@@ -92,9 +106,15 @@ always@(posedge i_clk or negedge i_rst_n) begin
         o_overflow_r <= 0;
         o_valid_r <= 0;
     end else if (i_valid) begin
-        o_data_r <= o_data_w;
-        o_overflow_r <= o_overflow_w;
+	if(i_inst == 3'b011) begin
+		o_data_r <= long_sum[11:0];
+		o_overflow_r <= (long_sum[11] != long_sum[12]) | o_overflow_w; //Checks if overflow occurs during the accum or mult stage
+	end else begin 
+		o_data_r <= o_data_w;
+		o_overflow_r <= o_overflow_w;
+	end 
         o_valid_r <= o_valid_w;
+
     end else begin
         o_data_r <= 0;
 	o_overflow_r <= 0;
